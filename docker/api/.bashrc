@@ -1,0 +1,5 @@
+alias a="php artisan"
+alias pint="./vendor/bin/pint"
+alias rector="./vendor/bin/rector"
+alias dbreset="php artisan migrate:fresh --seed"
+alias pail="php artisan pail"

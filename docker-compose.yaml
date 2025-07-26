@@ -1,0 +1,68 @@
+version: '1'
+
+services:
+  nginx:
+    image: 'nginx:alpine'
+    networks:
+      - target-application
+    ports:
+      - '${APP_PORT:-80}:80'
+    volumes:
+      - '.:/var/www/html'
+      - './docker/nginx/nginx.conf:/etc/nginx/nginx.conf'
+      - './docker/nginx/conf.d:/etc/nginx/conf.d'
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: 'local'
+    image: 'target-application:latest'
+    networks:
+      - target-application
+    volumes:
+      - '.:/var/www/html'
+      - './docker/api/php.ini:/usr/local/etc/php/php.ini'
+      - './docker/api/.bashrc:/home/www/.bashrc'
+    depends_on:
+      - mysql
+
+  mysql:
+    image: 'mysql:8.0'
+    ports:
+      - '${FORWARD_DB_PORT:-3306}:3306'
+    command: --innodb-use-native-aio=0
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    volumes:
+      - 'mysql:/var/lib/mysql'
+      - '.:/var/www/html'
+    networks:
+      - target-application
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
+      retries: 3
+      timeout: 5s
+
+  phpmyadmin:
+    image: phpmyadmin
+    ports:
+      - '${FORWARD_PHPMYADMIN_PORT:-8080}:80'
+    environment:
+      - PMA_HOST=mysql
+    networks:
+      - target-application
+
+volumes:
+  mysql:
+    driver: local
+
+networks:
+  target-application:
+    driver: bridge
